@@ -1,37 +1,35 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Toplantı Yoklama</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meeting 1 Check-In</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
     input, button { padding: 10px; font-size: 16px; margin-top: 10px; }
     #status { margin-top: 20px; font-weight: bold; }
   </style>
 </head>
 <body>
-
-  <h2>Toplantı Yoklama</h2>
+  <h2>Meeting 1 Check-In</h2>
 
   <form id="checkin-form">
-    <label>Adınızı girin:</label><br>
+    <label>Enter your name:</label><br>
     <input type="text" id="name" required><br>
-    <button type="submit">Yoklama Ver</button>
+    <button type="submit">Check In</button>
   </form>
 
-  <p id="status">Konum kontrol ediliyor...</p>
+  <p id="status">Checking location...</p>
 
   <script>
     const allowedLat = 40.952181;
     const allowedLon = 29.139799;
     const maxDistanceMeters = 100;
-    const meetingName = "Meeting 1";
     const endpoint = "https://script.google.com/macros/s/AKfycbw_uDCV4u7nm12dPSDcPx2f2mPvvLzEhXYFE-aGsKuGQILXwPaR4jC0BUkzBnfdWiLKUg/exec";
+    const meetingName = "Meeting1";
 
     function getDistance(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
-      const toRad = deg => deg * Math.PI / 180;
+      const toRad = x => x * Math.PI / 180;
       const dLat = toRad(lat2 - lat1);
       const dLon = toRad(lon2 - lon1);
       const a = Math.sin(dLat / 2) ** 2 +
@@ -41,65 +39,52 @@
       return R * c;
     }
 
-    navigator.geolocation.getCurrentPosition(success, error, {
-      enableHighAccuracy: true,
-      timeout: 10000
-    });
-
     let userLat = null, userLon = null;
+
+    navigator.geolocation.getCurrentPosition(success, error);
 
     function success(position) {
       userLat = position.coords.latitude;
       userLon = position.coords.longitude;
       const dist = getDistance(userLat, userLon, allowedLat, allowedLon);
-
       if (dist <= maxDistanceMeters) {
-        document.getElementById("status").innerText = "Konum uygun. Lütfen yoklama verin.";
+        document.getElementById("status").innerText = "You're in the right location. Please check in.";
       } else {
         document.getElementById("checkin-form").style.display = "none";
-        document.getElementById("status").innerText = `Konum çok uzak (${Math.round(dist)} metre). Yoklama verilemez.`;
+        document.getElementById("status").innerText = `You're too far away (${Math.round(dist)} meters).`;
       }
     }
 
-    function error(err) {
+    function error() {
+      document.getElementById("status").innerText = "Location access denied. Cannot check in.";
       document.getElementById("checkin-form").style.display = "none";
-      document.getElementById("status").innerText = "Konum bilgisi alınamadı. Lütfen tarayıcınızın konum iznini verdiğinizden emin olun.";
     }
 
     document.getElementById("checkin-form").addEventListener("submit", function (e) {
       e.preventDefault();
 
-      const name = document.getElementById("name").value.trim();
+      const name = document.getElementById("name").value;
       if (!userLat || !userLon) {
-        document.getElementById("status").innerText = "Konum henüz alınamadı. Lütfen tekrar deneyin.";
+        document.getElementById("status").innerText = "Location not loaded yet.";
         return;
       }
 
       fetch(endpoint, {
         method: "POST",
+        mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name,
           latitude: userLat,
           longitude: userLon,
-          meeting: meetingName
+          meeting: meetingName,
+          timestamp: new Date().toISOString()
         })
-      })
-      .then(() => {
-        localStorage.setItem(`checkedIn_${meetingName}`, "true");
-        document.getElementById("checkin-form").style.display = "none";
-        document.getElementById("status").innerText = "Yoklama başarıyla alındı. Teşekkürler!";
-      })
-      .catch(() => {
-        document.getElementById("status").innerText = "Yoklama gönderilirken hata oluştu. Lütfen tekrar deneyin.";
       });
+
+      document.getElementById("status").innerText = "Check-in successful. You can submit again if needed.";
+      document.getElementById("name").value = ""; // Clear input
     });
-
-    if (localStorage.getItem(`checkedIn_${meetingName}`)) {
-      document.getElementById("checkin-form").style.display = "none";
-      document.getElementById("status").innerText = "Bu toplantı için zaten yoklama verdiniz.";
-    }
   </script>
-
 </body>
 </html>
